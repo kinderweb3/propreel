@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PropReel — Studio Vidéo Immobilier IA</title>
+<!-- Clé API sécurisée côté serveur via /api/claude -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --gold:#C9A96E;--gold-light:#E8D5A8;--dark:#0F0E0C;--dark-2:#1A1815;
+  --dark-3:#252320;--dark-4:#302E2A;--text:#F5F0E8;--text-muted:#9A9080;
+  --border:rgba(201,169,110,0.15);--success:#5A9B6A;--radius:12px;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--dark);color:var(--text);min-height:100vh;}
+/* HEADER */
+.header{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 2rem;border-bottom:0.5px solid var(--border);background:var(--dark-2);position:sticky;top:0;z-index:50;}
+.logo{display:flex;align-items:center;gap:10px;font-family:'Playfair Display',serif;font-size:22px;font-weight:500;color:var(--gold);}
+.badge{font-size:10px;font-weight:500;letter-spacing:0.15em;text-transform:uppercase;background:rgba(201,169,110,0.12);color:var(--gold);border:0.5px solid rgba(201,169,110,0.3);padding:4px 10px;border-radius:20px;}
+/* STEPS */
+.steps-bar{display:flex;align-items:center;padding:1rem 2rem;background:var(--dark-2);border-bottom:0.5px solid var(--border);overflow-x:auto;gap:0;}
+.step-item{display:flex;align-items:center;gap:8px;cursor:pointer;flex-shrink:0;}
+.step-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;border:1px solid var(--text-muted);color:var(--text-muted);transition:all 0.3s;}
+.step-num.active{border-color:var(--gold);color:var(--gold);background:rgba(201,169,110,0.1);}
+.step-num.done{border-color:var(--success);color:var(--dark);background:var(--success);}
+.step-label{font-size:13px;color:var(--text-muted);}
+.step-label.active{color:var(--text);}
+.step-sep{width:40px;height:0.5px;background:var(--border);margin:0 12px;flex-shrink:0;}
+/* MAIN */
+.main{padding:2rem;max-width:900px;margin:0 auto;}
+.section-title{font-family:'Playfair Display',serif;font-size:20px;color:var(--text);margin-bottom:0.5rem;}
+.section-sub{font-size:13px;color:var(--text-muted);margin-bottom:1.5rem;line-height:1.5;}
+/* UPLOAD */
+#fileInput{display:none;}
+.upload-label{display:block;border:1.5px dashed rgba(201,169,110,0.35);border-radius:var(--radius);padding:3rem 2rem;text-align:center;cursor:pointer;transition:all 0.25s;background:rgba(201,169,110,0.03);user-select:none;}
+.upload-label:hover,.upload-label.dragover{border-color:var(--gold);background:rgba(201,169,110,0.08);}
+.upload-icon{font-size:48px;color:var(--gold);margin-bottom:1rem;}
+.upload-title{font-size:18px;font-weight:500;margin-bottom:8px;}
+.upload-sub{font-size:13px;color:var(--text-muted);}
+.paste-tip{display:flex;align-items:center;gap:10px;background:rgba(201,169,110,0.05);border:0.5px dashed rgba(201,169,110,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--text-muted);margin-top:10px;}
+/* PHOTOS GRID */
+.photos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:1.25rem;}
+.photo-card{position:relative;aspect-ratio:4/3;border-radius:8px;overflow:hidden;border:0.5px solid var(--border);}
+.photo-card img{width:100%;height:100%;object-fit:cover;display:block;}
+.photo-overlay{position:absolute;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s;gap:8px;}
+.photo-card:hover .photo-overlay{opacity:1;}
+.photo-del{background:rgba(220,50,50,0.85);border:none;color:white;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;}
+.photo-num{position:absolute;top:6px;left:6px;background:rgba(0,0,0,0.7);color:var(--gold);font-size:11px;font-weight:500;padding:2px 7px;border-radius:10px;}
+.counter-row{display:flex;align-items:center;justify-content:space-between;margin-top:1rem;}
+.counter-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(201,169,110,0.08);border:0.5px solid rgba(201,169,110,0.2);color:var(--gold-light);font-size:12px;padding:4px 12px;border-radius:20px;}
+.add-more-label{display:inline-flex;align-items:center;gap:6px;color:var(--gold);font-size:12px;cursor:pointer;text-decoration:underline;}
+.demoHint{margin-top:1.25rem;padding:1rem;background:rgba(201,169,110,0.05);border:0.5px dashed rgba(201,169,110,0.2);border-radius:8px;font-size:12px;color:var(--text-muted);text-align:center;}
+/* PASTE ZONE */
+.paste-zone{background:rgba(201,169,110,0.04);border:1px dashed rgba(201,169,110,0.25);border-radius:var(--radius);padding:1.25rem;margin-bottom:1.5rem;transition:border-color 0.3s;}
+.paste-zone.active{border-color:rgba(201,169,110,0.6);background:rgba(201,169,110,0.07);}
+.paste-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+.paste-label-ui{font-size:12px;font-weight:500;color:var(--gold);letter-spacing:0.08em;text-transform:uppercase;display:flex;align-items:center;gap:6px;}
+.paste-textarea{width:100%;background:transparent;border:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.7;resize:vertical;min-height:90px;outline:none;}
+.paste-textarea::placeholder{color:var(--text-muted);}
+.parse-btn{display:inline-flex;align-items:center;gap:7px;background:var(--gold);color:var(--dark);border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+.parse-btn:hover{background:var(--gold-light);}
+.parse-btn:disabled{opacity:0.5;cursor:not-allowed;}
+/* FORM */
+.or-sep{display:flex;align-items:center;gap:12px;margin:1.25rem 0;}
+.or-line{flex:1;height:0.5px;background:rgba(255,255,255,0.07);}
+.or-txt{font-size:11px;color:var(--text-muted);letter-spacing:0.08em;text-transform:uppercase;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:600px){.form-grid{grid-template-columns:1fr;}}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-group.full{grid-column:1 / -1;}
+.flabel{font-size:11px;font-weight:500;color:var(--text-muted);letter-spacing:0.05em;text-transform:uppercase;}
+input,select,textarea{background:var(--dark-3);border:0.5px solid rgba(255,255,255,0.08);color:var(--text);border-radius:8px;padding:10px 14px;font-size:14px;font-family:'DM Sans',sans-serif;transition:border-color 0.2s,background 0.3s;width:100%;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(201,169,110,0.4);}
+input::placeholder,textarea::placeholder{color:var(--text-muted);}
+select option{background:var(--dark-3);}
+textarea{resize:vertical;min-height:80px;}
+.filled{border-color:rgba(201,169,110,0.3)!important;background:rgba(201,169,110,0.05)!important;animation:fillPop 0.4s ease;}
+@keyframes fillPop{0%{transform:scale(1.015);}100%{transform:scale(1);}}
+/* STATUS */
+.status-bar{display:none;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:1.5rem;}
+.status-bar.show{display:flex;}
+.status-bar.ok{background:rgba(90,155,106,0.08);border:0.5px solid rgba(90,155,106,0.25);color:rgba(90,155,106,0.9);}
+.status-bar.loading{background:rgba(201,169,110,0.06);border:0.5px solid rgba(201,169,110,0.2);color:var(--text-muted);}
+.status-bar.error{background:rgba(200,80,80,0.08);border:0.5px solid rgba(200,80,80,0.25);color:rgba(220,100,100,0.9);}
+.status-spinner{width:14px;height:14px;border:1.5px solid rgba(201,169,110,0.3);border-top-color:var(--gold);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg);}}
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 24px;border-radius:8px;font-size:14px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all 0.2s;border:none;}
+.btn-primary{background:var(--gold);color:var(--dark);}
+.btn-primary:hover{background:var(--gold-light);transform:translateY(-1px);}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
+.btn-ghost{background:transparent;color:var(--text-muted);border:0.5px solid rgba(255,255,255,0.1);}
+.btn-ghost:hover{color:var(--text);border-color:rgba(255,255,255,0.2);}
+.btn-row{display:flex;justify-content:space-between;margin-top:2rem;align-items:center;flex-wrap:wrap;gap:10px;}
+/* STYLE CARDS */
+.style-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.5rem;}
+@media(max-width:600px){.style-grid{grid-template-columns:1fr 1fr;}}
+.style-card{border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;cursor:pointer;transition:all 0.2s;background:var(--dark-3);position:relative;}
+.style-card:hover{border-color:rgba(201,169,110,0.4);}
+.style-card.selected{border-color:var(--gold);background:rgba(201,169,110,0.07);}
+.style-card.selected::after{content:'✓';position:absolute;top:10px;right:10px;width:20px;height:20px;background:var(--gold);color:var(--dark);border-radius:50%;font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:700;}
+.style-emoji{font-size:28px;margin-bottom:8px;}
+.style-name{font-size:14px;font-weight:500;margin-bottom:4px;}
+.style-desc{font-size:12px;color:var(--text-muted);line-height:1.5;}
+.trans-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.5rem;}
+@media(max-width:500px){.trans-grid{grid-template-columns:1fr 1fr;}}
+.trans-card{border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--dark-3);}
+.trans-card:hover{border-color:rgba(201,169,110,0.3);}
+.trans-card.selected{border-color:var(--gold);background:rgba(201,169,110,0.07);}
+.trans-icon{font-size:22px;margin-bottom:4px;}
+.trans-name{font-size:11px;color:var(--text-muted);}
+.divider{height:0.5px;background:var(--border);margin:1.5rem 0;}
+.info-chip{display:inline-flex;align-items:center;gap:5px;background:rgba(201,169,110,0.08);border:0.5px solid rgba(201,169,110,0.2);color:var(--gold-light);font-size:11px;padding:3px 10px;border-radius:20px;margin-bottom:1.5rem;}
+/* PREVIEW */
+.preview-shell{display:flex;gap:2rem;align-items:flex-start;flex-wrap:wrap;}
+.phone-frame{flex-shrink:0;width:220px;height:400px;background:var(--dark);border:2px solid var(--dark-4);border-radius:32px;position:relative;overflow:hidden;box-shadow:0 0 0 1px rgba(201,169,110,0.2),0 20px 60px rgba(0,0,0,0.5);}
+.phone-notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:70px;height:8px;background:var(--dark-4);border-radius:10px;z-index:10;}
+.video-container{width:100%;height:100%;position:relative;overflow:hidden;background:#111;}
+.video-slide{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity 0.8s ease;}
+.video-slide.active{opacity:1;}
+.video-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.75) 0%,transparent 60%);z-index:2;}
+.video-text{position:absolute;bottom:30px;left:0;right:0;padding:0 16px;z-index:3;}
+.vt-price{font-family:'Playfair Display',serif;font-size:18px;color:var(--gold);margin-bottom:4px;}
+.vt-title{font-size:12px;color:rgba(255,255,255,0.9);line-height:1.4;}
+.vt-sub{font-size:10px;color:rgba(255,255,255,0.6);margin-top:2px;}
+.progress-dots{position:absolute;bottom:10px;left:0;right:0;display:flex;justify-content:center;gap:4px;z-index:4;}
+.pdot{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,0.3);transition:all 0.3s;}
+.pdot.active{width:14px;border-radius:2px;background:var(--gold);}
+.tiktok-ui{position:absolute;right:8px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:16px;z-index:5;}
+.tiktok-btn{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.tiktok-icon{width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:14px;}
+.tiktok-count{font-size:8px;color:rgba(255,255,255,0.7);}
+.script-panel{flex:1;min-width:240px;display:flex;flex-direction:column;gap:16px;}
+.script-box{background:var(--dark-3);border:0.5px solid var(--border);border-radius:var(--radius);padding:1.25rem;}
+.script-label{font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);font-weight:500;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.ai-dot{width:6px;height:6px;border-radius:50%;background:var(--gold);animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.script-text{font-size:13px;line-height:1.8;color:var(--text);min-height:80px;}
+.typing-cursor{display:inline-block;width:2px;height:14px;background:var(--gold);margin-left:2px;animation:blink 0.7s infinite;vertical-align:middle;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0;}}
+.music-bar{display:flex;align-items:center;gap:10px;background:var(--dark-3);border:0.5px solid var(--border);border-radius:8px;padding:10px 14px;}
+.music-name{font-size:13px;font-weight:500;flex:1;}
+.music-genre{font-size:11px;color:var(--text-muted);}
+.bars{display:flex;align-items:flex-end;gap:2px;height:16px;}
+.bar{width:3px;background:var(--gold);border-radius:1px;animation:dance 0.6s ease-in-out infinite alternate;}
+.bar:nth-child(2){animation-delay:0.1s;}.bar:nth-child(3){animation-delay:0.2s;}.bar:nth-child(4){animation-delay:0.15s;}.bar:nth-child(5){animation-delay:0.05s;}
+@keyframes dance{from{height:3px;}to{height:14px;}}
+/* EXPORT */
+.export-btns{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+.export-btn{display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:0.5px solid var(--border);background:var(--dark-3);color:var(--text);transition:all 0.2s;font-family:'DM Sans',sans-serif;}
+.export-btn:hover{border-color:var(--gold);color:var(--gold);}
+.export-btn:disabled{opacity:0.5;cursor:not-allowed;}
+.export-tiktok{border-color:rgba(255,100,100,0.4);color:#ff6464;}
+.export-insta{border-color:rgba(200,100,200,0.4);color:#cc77cc;}
+.export-progress{display:none;height:3px;background:rgba(201,169,110,0.15);border-radius:2px;margin-bottom:10px;overflow:hidden;}
+.export-progress.show{display:block;}
+.export-progress-fill{height:100%;background:var(--gold);border-radius:2px;width:0%;transition:width 0.15s;}
+.export-result{display:none;padding:12px;background:rgba(90,155,106,0.08);border:0.5px solid rgba(90,155,106,0.25);border-radius:8px;font-size:12px;color:rgba(90,155,106,0.9);line-height:1.6;}
+.export-result.show{display:block;}
+/* GENERATING OVERLAY */
+.generating-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:100;align-items:center;justify-content:center;flex-direction:column;gap:20px;}
+.generating-overlay.show{display:flex;}
+.gen-spinner{width:60px;height:60px;border:2px solid rgba(201,169,110,0.2);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;}
+.gen-title{font-family:'Playfair Display',serif;font-size:20px;color:var(--gold);}
+.gen-sub{font-size:13px;color:var(--text-muted);}
+.gen-steps{display:flex;flex-direction:column;gap:10px;width:280px;}
+.gen-step{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-muted);}
+.gen-step.done{color:var(--text);}
+.gen-step-dot{width:8px;height:8px;border-radius:50%;background:var(--text-muted);flex-shrink:0;}
+.gen-step.active .gen-step-dot{background:var(--gold);animation:pulse 0.8s infinite;}
+.gen-step.done .gen-step-dot{background:var(--success);}
+/* SLIDE ANIM */
+.slide-enter{animation:slideIn 0.4s ease forwards;}
+@keyframes slideIn{from{opacity:0;transform:translateX(16px);}to{opacity:1;transform:translateX(0);}}
+/* API KEY BANNER */
+.api-banner{background:rgba(201,169,110,0.08);border:0.5px solid rgba(201,169,110,0.3);border-radius:8px;padding:12px 16px;font-size:12px;color:var(--gold-light);display:flex;align-items:center;gap:10px;margin-bottom:1.5rem;}
+.api-banner input{background:var(--dark-4);border:0.5px solid rgba(201,169,110,0.2);color:var(--text);border-radius:6px;padding:6px 10px;font-size:12px;font-family:monospace;flex:1;min-width:0;}
+</style>
+</head>
+<body>
+
+<canvas id="exportCanvas" style="display:none;" width="1080" height="1920"></canvas>
+
+<div class="generating-overlay" id="genOverlay">
+  <div class="gen-spinner"></div>
+  <div class="gen-title">Création en cours…</div>
+  <div class="gen-sub">Votre vidéo est en cours de génération</div>
+  <div class="gen-steps">
+    <div class="gen-step" id="gs1"><div class="gen-step-dot"></div>Analyse des photos</div>
+    <div class="gen-step" id="gs2"><div class="gen-step-dot"></div>Génération de la voix IA</div>
+    <div class="gen-step" id="gs3"><div class="gen-step-dot"></div>Synchronisation musicale</div>
+    <div class="gen-step" id="gs4"><div class="gen-step-dot"></div>Rendu des transitions</div>
+    <div class="gen-step" id="gs5"><div class="gen-step-dot"></div>Encodage final</div>
+  </div>
+</div>
+
+<div class="header">
+  <div class="logo">🎬 PropReel <span style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text-muted);font-weight:300;">· Studio Vidéo Immobilier</span></div>
+  <div class="badge">✦ IA Générative</div>
+</div>
+
+<div class="steps-bar">
+  <div class="step-item" onclick="goStep(1)"><div class="step-num active" id="sn1">1</div><div class="step-label active" id="sl1">Photos</div></div>
+  <div class="step-sep"></div>
+  <div class="step-item" onclick="goStep(2)"><div class="step-num" id="sn2">2</div><div class="step-label" id="sl2">Bien & Détails</div></div>
+  <div class="step-sep"></div>
+  <div class="step-item" onclick="goStep(3)"><div class="step-num" id="sn3">3</div><div class="step-label" id="sl3">Style & Ambiance</div></div>
+  <div class="step-sep"></div>
+  <div class="step-item" onclick="goStep(4)"><div class="step-num" id="sn4">4</div><div class="step-label" id="sl4">Prévisualisation</div></div>
+</div>
+
+<div class="main">
+
+  <!-- STEP 1 : PHOTOS -->
+  <div id="step1" class="slide-enter">
+    <div class="section-title">Importez vos photos</div>
+    <div class="section-sub">Cliquez sur la zone ci-dessous, glissez-déposez vos fichiers, ou collez des images avec Ctrl+V.</div>
+
+    <label for="fileInput" class="upload-label" id="dropZone">
+      <div class="upload-icon">📷</div>
+      <div class="upload-title">Cliquez ici pour choisir vos photos</div>
+      <div class="upload-sub">ou glissez-déposez directement · JPG, PNG, WebP, HEIC · jusqu'à 20 photos</div>
+    </label>
+    <input type="file" id="fileInput" multiple accept="image/*">
+
+    <div class="paste-tip">📋 <span>Copiez une image depuis votre dossier ou navigateur, puis appuyez sur <strong style="color:var(--text);">Ctrl+V</strong> (ou Cmd+V sur Mac) pour l'ajouter</span></div>
+
+    <div id="photoCountRow" style="display:none;" class="counter-row">
+      <div class="counter-chip">📸 <span id="photoCount">0</span> photo(s) chargée(s)</div>
+      <label for="fileInput" class="add-more-label">+ Ajouter d'autres photos</label>
+    </div>
+
+    <div class="photos-grid" id="photosGrid"></div>
+    <div class="demoHint" id="demoHint">💡 <strong style="color:var(--text);">Mode démo</strong> — Cliquez sur "Photos de démo" pour tester sans importer vos propres photos</div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="loadDemoPhotos()">✦ Photos de démo</button>
+      <button class="btn btn-primary" id="step1Next" onclick="goStep(2)" disabled>Suivant — Détails →</button>
+    </div>
+  </div>
+
+  <!-- STEP 2 : DÉTAILS -->
+  <div id="step2" style="display:none;">
+    <div class="section-title">Détails du bien</div>
+    <div class="section-sub">Collez la description complète de l'annonce — l'IA extraira et remplira tous les champs automatiquement.</div>
+
+    <div class="paste-zone" id="pasteZone">
+      <div class="paste-header">
+        <div class="paste-label-ui">📋 Coller la description du bien</div>
+        <button class="parse-btn" id="parseBtn" onclick="parseDescription()" disabled>✦ Remplir avec l'IA</button>
+      </div>
+      <textarea class="paste-textarea" id="pasteArea"
+        placeholder="Collez ici l'annonce complète du bien…&#10;&#10;Ex: Neuilly-sur-Seine — Magnifique appartement 4 pièces de 120m² au 3ème étage. Séjour lumineux de 35m², cuisine équipée haut de gamme, 3 chambres dont une suite parentale avec dressing, 2 salles de bain. Terrasse de 20m², double parking en sous-sol, cave. Gardien, ascenseur. Proche commerces et métro. Prix : 850 000 €. Contact : Agence Prestige Paris — 01 23 45 67 89."
+        oninput="onPasteInput()" onpaste="setTimeout(onPasteInput,50)"></textarea>
+    </div>
+
+    <div class="status-bar" id="statusBar"></div>
+
+    <div class="or-sep"><div class="or-line"></div><div class="or-txt">ou remplissez manuellement</div><div class="or-line"></div></div>
+
+    <div class="form-grid">
+      <div class="form-group"><label class="flabel">Type de bien</label>
+        <select id="propType">
+          <option value="appartement">Appartement</option><option value="maison">Maison / Villa</option>
+          <option value="loft">Loft / Atypique</option><option value="bureau">Bureau / Commerce</option><option value="terrain">Terrain</option>
+        </select></div>
+      <div class="form-group"><label class="flabel">Prix de vente</label><input type="text" id="propPrice" placeholder="ex: 485 000 €"></div>
+      <div class="form-group"><label class="flabel">Localisation</label><input type="text" id="propLocation" placeholder="ex: Neuilly-sur-Seine, 92200"></div>
+      <div class="form-group"><label class="flabel">Surface habitable</label><input type="text" id="propSurface" placeholder="ex: 120 m²"></div>
+      <div class="form-group"><label class="flabel">Pièces</label><input type="text" id="propRooms" placeholder="ex: 4 pièces, 3 chambres"></div>
+      <div class="form-group"><label class="flabel">Étage / Situation</label><input type="text" id="propFloor" placeholder="ex: 3ème étage, dernier étage"></div>
+      <div class="form-group full"><label class="flabel">Points forts du bien</label><textarea id="propHighlights" placeholder="ex: Vue dégagée, terrasse de 30m², parking double, cave, proche transports…"></textarea></div>
+      <div class="form-group"><label class="flabel">Agence / Contact</label><input type="text" id="propAgency" placeholder="ex: Agence Prestige Paris"></div>
+      <div class="form-group"><label class="flabel">Téléphone affiché</label><input type="text" id="propPhone" placeholder="ex: 01 23 45 67 89"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="goStep(1)">← Retour</button>
+      <button class="btn btn-primary" onclick="goStep(3)">Suivant — Style →</button>
+    </div>
+  </div>
+
+  <!-- STEP 3 : STYLE -->
+  <div id="step3" style="display:none;">
+    <div class="section-title">Style & Ambiance</div>
+    <div class="section-sub">Choisissez l'identité visuelle et musicale de votre vidéo.</div>
+    <div class="info-chip">🎵 Musique générée par IA · Droits libres</div>
+    <label class="flabel" style="display:block;margin-bottom:10px;">Ambiance du bien</label>
+    <div class="style-grid">
+      <div class="style-card selected" onclick="selectStyle(this,'luxe')"><div class="style-emoji">✨</div><div class="style-name">Luxe & Prestige</div><div class="style-desc">Piano classique, voix posée et élégante, transitions douces</div></div>
+      <div class="style-card" onclick="selectStyle(this,'familial')"><div class="style-emoji">🏡</div><div class="style-name">Familial & Chaleureux</div><div class="style-desc">Guitare acoustique, ton enjoué, énergie positive</div></div>
+      <div class="style-card" onclick="selectStyle(this,'moderne')"><div class="style-emoji">🔷</div><div class="style-name">Moderne & Dynamique</div><div class="style-desc">House électronique, transitions rapides, ton percutant</div></div>
+      <div class="style-card" onclick="selectStyle(this,'naturel')"><div class="style-emoji">🌿</div><div class="style-name">Nature & Zen</div><div class="style-desc">Ambiance organique, sons naturels, voix apaisante</div></div>
+      <div class="style-card" onclick="selectStyle(this,'urban')"><div class="style-emoji">🏙️</div><div class="style-name">Urbain & Trendy</div><div class="style-desc">Hip-hop lo-fi, cuts dynamiques, format TikTok natif</div></div>
+      <div class="style-card" onclick="selectStyle(this,'classic')"><div class="style-emoji">🏛️</div><div class="style-name">Classique & Bourgeois</div><div class="style-desc">Quatuor à cordes, narration solennelle et raffinée</div></div>
+    </div>
+    <div class="divider"></div>
+    <label class="flabel" style="display:block;margin-bottom:10px;">Type de transitions</label>
+    <div class="trans-grid">
+      <div class="trans-card selected" onclick="selectTrans(this,'zoom')"><div class="trans-icon">🔍</div><div class="trans-name">Ken Burns</div></div>
+      <div class="trans-card" onclick="selectTrans(this,'slide')"><div class="trans-icon">➡️</div><div class="trans-name">Glissement</div></div>
+      <div class="trans-card" onclick="selectTrans(this,'fade')"><div class="trans-icon">🌫️</div><div class="trans-name">Fondu</div></div>
+      <div class="trans-card" onclick="selectTrans(this,'cut')"><div class="trans-icon">✂️</div><div class="trans-name">Cut sec</div></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="goStep(2)">← Retour</button>
+      <button class="btn btn-primary" onclick="startGeneration()">✦ Générer la vidéo</button>
+    </div>
+  </div>
+
+  <!-- STEP 4 : PREVIEW -->
+  <div id="step4" style="display:none;">
+    <div class="section-title">Prévisualisation & Export</div>
+    <div class="section-sub">Votre vidéo est prête. Téléchargez-la et importez-la sur TikTok ou Instagram.</div>
+    <div class="preview-shell">
+      <div>
+        <div class="phone-frame">
+          <div class="phone-notch"></div>
+          <div class="video-container" id="videoContainer">
+            <div class="video-overlay"></div>
+            <div class="video-text">
+              <div class="vt-price" id="vt-price">850 000 €</div>
+              <div class="vt-title" id="vt-title">Appartement 4 pièces · 120 m²</div>
+              <div class="vt-sub" id="vt-loc">Neuilly-sur-Seine · Agence Prestige Paris</div>
+            </div>
+            <div class="tiktok-ui">
+              <div class="tiktok-btn"><div class="tiktok-icon">♥</div><div class="tiktok-count">2.4k</div></div>
+              <div class="tiktok-btn"><div class="tiktok-icon">💬</div><div class="tiktok-count">38</div></div>
+              <div class="tiktok-btn"><div class="tiktok-icon">↗</div><div class="tiktok-count">share</div></div>
+            </div>
+            <div class="progress-dots" id="pdots"></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;justify-content:center;">
+          <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px;" onclick="togglePlay()" id="playBtn">▶ Lecture</button>
+          <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px;" onclick="goStep(3)">↺ Régénérer</button>
+        </div>
+      </div>
+      <div class="script-panel">
+        <div class="script-box">
+          <div class="script-label"><div class="ai-dot"></div> Script voix-off · Généré par IA</div>
+          <div class="script-text" id="scriptText"><span class="typing-cursor"></span></div>
+        </div>
+        <div class="music-bar">
+          <span style="color:var(--gold);font-size:16px;">🎵</span>
+          <div><div class="music-name" id="musicName">Elegance Piano No. 3</div><div class="music-genre" id="musicGenre">Classique contemporain · 72 BPM · Droits libres</div></div>
+          <div class="bars"><div class="bar" style="height:8px"></div><div class="bar" style="height:12px"></div><div class="bar" style="height:5px"></div><div class="bar" style="height:14px"></div><div class="bar" style="height:9px"></div></div>
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;font-weight:500;">Exporter la vidéo</div>
+          <div class="export-btns">
+            <button class="export-btn export-tiktok" id="btnTiktok" onclick="exportVideo('tiktok')">♪ TikTok (9:16)</button>
+            <button class="export-btn export-insta" id="btnInsta" onclick="exportVideo('insta')">◈ Instagram (1:1)</button>
+            <button class="export-btn" id="btnMp4" onclick="exportVideo('mp4')">⬇ Télécharger MP4</button>
+          </div>
+          <div class="export-progress" id="exportProgress"><div class="export-progress-fill" id="exportProgressFill"></div></div>
+          <div class="export-result" id="exportResult"></div>
+        </div>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:1.5rem;">
+      <button class="btn btn-ghost" onclick="resetAll()">+ Nouvelle vidéo</button>
+      <button class="btn btn-primary" onclick="exportVideo('mp4')">⬇ Télécharger la vidéo</button>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+/* ─────────────────────────────────────────────
+   CONFIG
+───────────────────────────────────────────── */
+
+
+/* ─────────────────────────────────────────────
+   STATE
+───────────────────────────────────────────── */
+const DEMO=[
+  {bg:'linear-gradient(135deg,#1a1510,#2d2418,#3d3220)',emoji:'🛋️'},
+  {bg:'linear-gradient(135deg,#0f1a1f,#152530,#1c3040)',emoji:'🛏️'},
+  {bg:'linear-gradient(135deg,#1a1a10,#282810,#333315)',emoji:'🍳'},
+  {bg:'linear-gradient(135deg,#151a10,#202815,#2a3520)',emoji:'🌿'},
+  {bg:'linear-gradient(135deg,#1a1015,#281520,#352030)',emoji:'🛁'},
+];
+let currentStep=1,photos=[],playInterval=null,currentSlide=0,isPlaying=false,selectedAmbiance='luxe',selectedTrans='zoom',currentScript='';
+
+/* ─────────────────────────────────────────────
+   FILE UPLOAD — label[for] + drag/drop + paste
+───────────────────────────────────────────── */
+document.getElementById('fileInput').addEventListener('change',function(){
+  readFiles(Array.from(this.files)); this.value='';
+});
+const dz=document.getElementById('dropZone');
+['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('dragover');}));
+['dragleave','dragend'].forEach(ev=>dz.addEventListener(ev,()=>dz.classList.remove('dragover')));
+dz.addEventListener('drop',e=>{
+  e.preventDefault();dz.classList.remove('dragover');
+  const f=Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith('image/'));
+  if(f.length)readFiles(f);
+});
+document.addEventListener('paste',e=>{
+  if(currentStep!==1)return;
+  const items=Array.from(e.clipboardData.items).filter(i=>i.type.startsWith('image/'));
+  if(items.length)readFiles(items.map(i=>i.getAsFile()));
+});
+
+function readFiles(files){
+  const toRead=files.slice(0,20-photos.length);
+  if(!toRead.length)return;
+  let done=0;
+  toRead.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=e=>{photos.push({url:e.target.result,name:file.name});done++;if(done===toRead.length)renderPhotos();};
+    reader.readAsDataURL(file);
+  });
+}
+function loadDemoPhotos(){photos=DEMO.map((s,i)=>({url:null,demo:s,name:'Photo '+(i+1)}));renderPhotos();}
+function renderPhotos(){
+  const grid=document.getElementById('photosGrid');grid.innerHTML='';
+  photos.forEach((p,i)=>{
+    const card=document.createElement('div');card.className='photo-card';
+    if(p.url){const img=document.createElement('img');img.src=p.url;img.alt='Photo '+(i+1);card.appendChild(img);}
+    else{const dm=document.createElement('div');dm.className='demo-photo';dm.style.cssText=`width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2.5rem;background:${p.demo.bg}`;dm.textContent=p.demo.emoji;card.appendChild(dm);}
+    const num=document.createElement('div');num.className='photo-num';num.textContent=i+1;card.appendChild(num);
+    const ov=document.createElement('div');ov.className='photo-overlay';
+    const del=document.createElement('button');del.className='photo-del';del.textContent='✕';
+    del.onclick=e=>{e.preventDefault();e.stopPropagation();photos.splice(i,1);renderPhotos();};
+    ov.appendChild(del);card.appendChild(ov);grid.appendChild(card);
+  });
+  const has=photos.length>0;
+  document.getElementById('step1Next').disabled=!has;
+  document.getElementById('photoCountRow').style.display=has?'flex':'none';
+  document.getElementById('photoCount').textContent=photos.length;
+  document.getElementById('demoHint').style.display=has?'none':'block';
+}
+
+/* ─────────────────────────────────────────────
+   NAVIGATION
+───────────────────────────────────────────── */
+function goStep(n){
+  if(n>1&&photos.length===0)loadDemoPhotos();
+  document.getElementById('step'+currentStep).style.display='none';
+  const el=document.getElementById('step'+n);el.style.display='block';el.classList.add('slide-enter');
+  setTimeout(()=>el.classList.remove('slide-enter'),400);
+  currentStep=n;updateStepBar();
+  if(n===4)initPreview();
+}
+function updateStepBar(){
+  for(let i=1;i<=4;i++){
+    const num=document.getElementById('sn'+i),lbl=document.getElementById('sl'+i);
+    num.className='step-num'+(i<currentStep?' done':i===currentStep?' active':'');
+    num.textContent=i<currentStep?'✓':i;
+    lbl.className='step-label'+(i===currentStep?' active':'');
+  }
+}
+
+
+/* ─────────────────────────────────────────────
+   PARSE DESCRIPTION VIA CLAUDE API
+───────────────────────────────────────────── */
+function onPasteInput(){
+  const v=document.getElementById('pasteArea').value.trim();
+  document.getElementById('parseBtn').disabled=v.length<20;
+  document.getElementById('pasteZone').classList.toggle('active',v.length>0);
+}
+async function parseDescription(){
+  const text=document.getElementById('pasteArea').value.trim();
+  if(!text)return;
+  const btn=document.getElementById('parseBtn'),bar=document.getElementById('statusBar');
+  btn.disabled=true;btn.textContent='⏳ Analyse…';
+  bar.className='status-bar show loading';bar.innerHTML='<div class="status-spinner"></div><span>L\'IA analyse la description…</span>';
+  try{
+    const headers={'Content-Type':'application/json'};
+    const res=await fetch('/api/claude',{
+      method:'POST',headers,
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,
+        messages:[{role:'user',content:`Tu es un extracteur d'informations immobilières. Analyse ce texte et retourne UNIQUEMENT un JSON valide (sans markdown, sans backticks) avec ces clés:
+{"type":"appartement|maison|loft|bureau|terrain","price":"","location":"","surface":"","rooms":"","floor":"","highlights":"","agency":"","phone":""}
+Laisse "" si absent. Texte:\n${text}`}]})
+    });
+    if(!res.ok)throw new Error('HTTP '+res.status+' — '+await res.text());
+    const data=await res.json();
+    const raw=data.content.find(b=>b.type==='text')?.text||'{}';
+    const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());
+    fillFields(parsed);
+    bar.className='status-bar show ok';
+    bar.innerHTML='✓ <span>Champs remplis automatiquement — vérifiez et ajustez si besoin</span>';
+    setTimeout(()=>bar.classList.remove('show'),6000);
+  }catch(e){
+    console.error(e);
+    bar.className='status-bar show error';
+    bar.innerHTML='⚠ <span>Erreur : '+(e.message||'inconnue').substring(0,120)+'</span>';
+  }
+  btn.disabled=false;btn.innerHTML='✦ Remplir avec l\'IA';
+}
+function fillFields(d){
+  const map={type:'propType',price:'propPrice',location:'propLocation',surface:'propSurface',rooms:'propRooms',floor:'propFloor',highlights:'propHighlights',agency:'propAgency',phone:'propPhone'};
+  Object.entries(map).forEach(([k,id])=>{
+    if(!d[k])return;const el=document.getElementById(id);if(!el)return;
+    if(id==='propType'){const v=d[k].toLowerCase();el.value=['appartement','maison','loft','bureau','terrain'].find(o=>v.includes(o))||'appartement';}
+    else el.value=d[k];
+    el.classList.remove('filled');void el.offsetWidth;el.classList.add('filled');
+  });
+}
+
+/* ─────────────────────────────────────────────
+   STYLE
+───────────────────────────────────────────── */
+function selectStyle(el,val){document.querySelectorAll('.style-grid .style-card').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');selectedAmbiance=val;}
+function selectTrans(el,val){document.querySelectorAll('.trans-grid .trans-card').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');selectedTrans=val;}
+
+/* ─────────────────────────────────────────────
+   GENERATION OVERLAY
+───────────────────────────────────────────── */
+function startGeneration(){
+  const ov=document.getElementById('genOverlay');ov.classList.add('show');
+  const steps=['gs1','gs2','gs3','gs4','gs5'],timings=[700,1000,800,1300,900];let idx=0;
+  function doStep(){
+    if(idx>0)document.getElementById(steps[idx-1]).className='gen-step done';
+    if(idx<steps.length){document.getElementById(steps[idx]).className='gen-step active';idx++;setTimeout(doStep,timings[idx-1]||800);}
+    else setTimeout(()=>{ov.classList.remove('show');steps.forEach(s=>document.getElementById(s).className='gen-step');goStep(4);},600);
+  }
+  doStep();
+}
+
+/* ─────────────────────────────────────────────
+   PREVIEW SLIDESHOW
+───────────────────────────────────────────── */
+function initPreview(){
+  const price=document.getElementById('propPrice').value||'850 000 €';
+  const type=document.getElementById('propType').value||'appartement';
+  const surface=document.getElementById('propSurface').value||'120 m²';
+  const rooms=document.getElementById('propRooms').value||'4 pièces';
+  const loc=document.getElementById('propLocation').value||'Neuilly-sur-Seine';
+  const agency=document.getElementById('propAgency').value||'Agence Prestige Paris';
+  document.getElementById('vt-price').textContent=price;
+  document.getElementById('vt-title').textContent=(type.charAt(0).toUpperCase()+type.slice(1))+' '+rooms+' · '+surface;
+  document.getElementById('vt-loc').textContent=loc+' · '+agency;
+  const mMap={luxe:['Elegance Piano No. 3','Classique contemporain · 72 BPM'],familial:['Warm Strings & Guitar','Acoustique · 90 BPM'],moderne:['Urban Minimal House','Electronic · 120 BPM'],naturel:['Forest Morning Ambience','Nature lo-fi · 65 BPM'],urban:['City Vibes Lo-Fi','Hip-hop · 95 BPM'],classic:['Quatuor en Ré mineur','Musique de chambre · 60 BPM']};
+  const m=mMap[selectedAmbiance]||mMap.luxe;
+  document.getElementById('musicName').textContent=m[0];
+  document.getElementById('musicGenre').textContent=m[1]+' · Droits libres';
+  buildSlides();typeScript(price,type,surface,rooms,loc);startPlay();
+}
+function buildSlides(){
+  const c=document.getElementById('videoContainer');c.querySelectorAll('.video-slide').forEach(el=>el.remove());
+  const slides=photos.length?photos:DEMO.map(s=>({demo:s}));
+  const dots=document.getElementById('pdots');dots.innerHTML='';
+  slides.forEach((p,i)=>{
+    const slide=document.createElement('div');slide.className='video-slide'+(i===0?' active':'');
+    if(p.url)slide.style.backgroundImage=`url(${p.url})`;
+    else{slide.style.background=p.demo.bg;const em=document.createElement('div');em.style.cssText='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:48px;opacity:0.3;z-index:1;';em.textContent=p.demo.emoji;slide.appendChild(em);}
+    c.insertBefore(slide,c.querySelector('.video-overlay'));
+    const dot=document.createElement('div');dot.className='pdot'+(i===0?' active':'');dots.appendChild(dot);
+  });
+  currentSlide=0;
+}
+function advanceSlide(){
+  const slides=document.querySelectorAll('.video-slide'),dots=document.querySelectorAll('.pdot');
+  slides[currentSlide].classList.remove('active');dots[currentSlide].classList.remove('active');
+  currentSlide=(currentSlide+1)%slides.length;
+  slides[currentSlide].classList.add('active');dots[currentSlide].classList.add('active');
+}
+function startPlay(){isPlaying=true;document.getElementById('playBtn').textContent='⏸ Pause';playInterval=setInterval(advanceSlide,2800);}
+function togglePlay(){if(isPlaying){clearInterval(playInterval);isPlaying=false;document.getElementById('playBtn').textContent='▶ Lecture';}else startPlay();}
+
+function typeScript(price,type,surface,rooms,loc){
+  const h=document.getElementById('propHighlights').value;
+  const hl=h?h.split(',').slice(0,2).map(s=>s.trim()).join(', '):'';
+  const scripts={
+    luxe:`Découvrez cette exceptionnelle ${type} de ${surface}, nichée au cœur de ${loc}.\n\nAvec ses ${rooms} baignés de lumière${hl?', '+hl:''}… ce bien rare vous séduira au premier regard.\n\nA saisir à ${price}. Contactez-nous pour une visite privée.`,
+    familial:`Imaginez votre famille dans cette magnifique ${type} de ${surface} à ${loc} !\n\nDes espaces conviviaux, ${rooms}${hl?', '+hl:''}.\n\n${price} — le bien de vos rêves vous attend !`,
+    moderne:`${price}. ${surface}. ${rooms}. ${loc}.\n\nCette ${type} au design épuré est faite pour ceux qui exigent le meilleur.\n\nRéservez maintenant — ne tardez pas !`,
+    naturel:`Posez-vous. Respirez. Bienvenue dans votre futur chez-vous.\n\nCette ${type} apaisante de ${surface} à ${loc} vous offre un cocon parfait.\n\n${rooms}, à ${price}.`,
+    urban:`La pépite que vous cherchiez 🔥\n\n${surface} | ${rooms} | ${loc}\n\nCette ${type} à ${price} coche TOUTES les cases. Swipe !`,
+    classic:`Nous avons l'honneur de vous présenter cette belle ${type} de ${surface} à ${price}.\n\nSituée en plein cœur de ${loc}, ce bien d'exception offre ${rooms} aux volumes remarquables.`
+  };
+  currentScript=scripts[selectedAmbiance]||scripts.luxe;
+  const el=document.getElementById('scriptText');el.innerHTML='<span class="typing-cursor"></span>';let i=0;
+  const iv=setInterval(()=>{if(i<currentScript.length){el.innerHTML=currentScript.substring(0,i+1).replace(/\n/g,'<br>')+'<span class="typing-cursor"></span>';i++;}else{el.innerHTML=currentScript.replace(/\n/g,'<br>');clearInterval(iv);}},18);
+}
+
+/* ─────────────────────────────────────────────
+   EXPORT VIDÉO — Canvas + MediaRecorder
+───────────────────────────────────────────── */
+async function exportVideo(format){
+  const prog=document.getElementById('exportProgress'),fill=document.getElementById('exportProgressFill'),result=document.getElementById('exportResult');
+  const btns=['btnTiktok','btnInsta','btnMp4'].map(id=>document.getElementById(id));
+  btns.forEach(b=>b.disabled=true);
+  prog.classList.add('show');fill.style.width='0%';result.classList.remove('show');
+
+  const slides=photos.length?photos:DEMO.map(s=>({demo:s}));
+  const w=format==='insta'?1080:1080,h=format==='insta'?1080:1920;
+  const canvas=document.getElementById('exportCanvas');canvas.width=w;canvas.height=h;
+  const ctx=canvas.getContext('2d');
+
+  const price=document.getElementById('propPrice').value||'850 000 €';
+  const type=document.getElementById('propType').value||'appartement';
+  const surface=document.getElementById('propSurface').value||'120 m²';
+  const rooms=document.getElementById('propRooms').value||'4 pièces';
+  const loc=document.getElementById('propLocation').value||'Neuilly-sur-Seine';
+  const agency=document.getElementById('propAgency').value||'Agence Prestige Paris';
+  const phone=document.getElementById('propPhone').value;
+
+  const mimeType=MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?'video/webm;codecs=vp9':MediaRecorder.isTypeSupported('video/webm')?'video/webm':null;
+  if(!mimeType){downloadScript(price,type,surface,rooms,loc,agency,phone,format);btns.forEach(b=>b.disabled=false);prog.classList.remove('show');return;}
+
+  const stream=canvas.captureStream(25);
+  const recorder=new MediaRecorder(stream,{mimeType,videoBitsPerSecond:5000000});
+  const chunks=[];
+  recorder.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
+  recorder.onstop=()=>{
+    const blob=new Blob(chunks,{type:mimeType});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=`PropReel_${format}_${Date.now()}.webm`;document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),3000);
+    fill.style.width='100%';
+    setTimeout(()=>{
+      prog.classList.remove('show');
+      result.classList.add('show');
+      result.innerHTML=`✅ <strong>Vidéo téléchargée !</strong><br>Le fichier <code>PropReel_${format}.webm</code> est dans vos téléchargements.<br>Importez-le directement sur <strong>TikTok</strong> ou <strong>Instagram Reels</strong>.`;
+      btns.forEach(b=>b.disabled=false);
+    },400);
+  };
+  recorder.start();
+
+  // Load images
+  const imgCache=[];
+  for(const p of slides){
+    if(p.url){const img=new Image();await new Promise(r=>{img.onload=img.onerror=r;img.src=p.url;});imgCache.push(img);}
+    else imgCache.push(null);
+  }
+
+  const FPS=25,slideTime=3,totalFrames=slides.length*slideTime*FPS;let frame=0;
+  function drawFrame(){
+    if(frame>=totalFrames){recorder.stop();return;}
+    const si=Math.floor(frame/(slideTime*FPS))%slides.length;
+    const sp=(frame%(slideTime*FPS))/(slideTime*FPS);
+    ctx.clearRect(0,0,w,h);
+    if(imgCache[si]){
+      const zoom=selectedTrans==='zoom'?1+sp*0.1:1;
+      ctx.save();ctx.translate(w/2,h/2);ctx.scale(zoom,zoom);ctx.translate(-w/2,-h/2);
+      ctx.drawImage(imgCache[si],0,0,w,h);ctx.restore();
+    }else{
+      const p=slides[si];
+      const grd=ctx.createLinearGradient(0,0,w,h);
+      grd.addColorStop(0,'#1a1510');grd.addColorStop(0.5,'#2d2418');grd.addColorStop(1,'#3d3220');
+      ctx.fillStyle=grd;ctx.fillRect(0,0,w,h);
+      ctx.font=`${h*0.12}px serif`;ctx.textAlign='center';ctx.fillStyle='rgba(255,255,255,0.15)';
+      ctx.fillText(p.demo?p.demo.emoji:'🏠',w/2,h/2+h*0.06);
+    }
+    // Overlay
+    const grad=ctx.createLinearGradient(0,h*0.45,0,h);
+    grad.addColorStop(0,'rgba(0,0,0,0)');grad.addColorStop(1,'rgba(0,0,0,0.82)');
+    ctx.fillStyle=grad;ctx.fillRect(0,0,w,h);
+    // Text
+    const fs=Math.round(w*0.052);ctx.textAlign='left';
+    ctx.fillStyle='#C9A96E';ctx.font=`500 ${fs}px Georgia, serif`;
+    ctx.fillText(price,w*0.07,h*0.81);
+    ctx.fillStyle='rgba(255,255,255,0.92)';ctx.font=`400 ${Math.round(fs*0.58)}px Arial, sans-serif`;
+    ctx.fillText((type.charAt(0).toUpperCase()+type.slice(1))+' '+rooms+' · '+surface,w*0.07,h*0.86);
+    ctx.fillStyle='rgba(255,255,255,0.6)';ctx.font=`300 ${Math.round(fs*0.48)}px Arial, sans-serif`;
+    ctx.fillText(loc+(agency?' · '+agency:''),w*0.07,h*0.905);
+    if(phone){ctx.fillStyle='rgba(201,169,110,0.8)';ctx.font=`400 ${Math.round(fs*0.45)}px Arial, sans-serif`;ctx.fillText(phone,w*0.07,h*0.945);}
+    fill.style.width=Math.round((frame/totalFrames)*95)+'%';
+    frame++;requestAnimationFrame(drawFrame);
+  }
+  drawFrame();
+}
+
+function downloadScript(price,type,surface,rooms,loc,agency,phone,format){
+  const content=`PROPREEL — FICHE VIDÉO IMMOBILIÈRE\n${'='.repeat(40)}\nFormat  : ${format.toUpperCase()}\nBien    : ${type.charAt(0).toUpperCase()+type.slice(1)} · ${document.getElementById('propSurface').value||'—'} · ${document.getElementById('propRooms').value||'—'}\nPrix    : ${price}\nLieu    : ${loc}\nAgence  : ${agency} ${phone?'· '+phone:''}\n\nSCRIPT VOIX-OFF\n${'-'.repeat(40)}\n${currentScript}\n\n${'='.repeat(40)}\nExporté le ${new Date().toLocaleDateString('fr-FR')} avec PropReel\nhttps://propreel.app`;
+  const blob=new Blob([content],{type:'text/plain;charset=utf-8'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='PropReel_script.txt';document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+  document.getElementById('exportResult').classList.add('show');
+  document.getElementById('exportResult').innerHTML='✅ <strong>Script téléchargé !</strong> La génération vidéo MP4 complète nécessite un serveur FFmpeg. Le script et les détails sont dans votre fichier .txt.';
+}
+
+/* ─────────────────────────────────────────────
+   RESET
+───────────────────────────────────────────── */
+function resetAll(){
+  photos=[];renderPhotos();currentScript='';
+  document.getElementById('pasteArea').value='';document.getElementById('parseBtn').disabled=true;
+  ['propType','propPrice','propLocation','propSurface','propRooms','propFloor','propHighlights','propAgency','propPhone'].forEach(id=>{
+    const el=document.getElementById(id);if(el){el.value=el.tagName==='SELECT'?'appartement':'';el.classList.remove('filled');}
+  });
+  if(playInterval)clearInterval(playInterval);isPlaying=false;currentSlide=0;
+  document.getElementById('exportResult').classList.remove('show');
+  document.getElementById('exportProgress').classList.remove('show');
+  goStep(1);
+}
+</script>
+</body>
+</html>
